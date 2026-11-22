@@ -55,6 +55,18 @@ button:hover { background: #2c56d1; }
 .delete { background: #e5484d; padding: 6px 12px; }
 .delete:hover { background: #c53035; }
 
+.error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: #b42318;
+  font-size: 0.9rem;
+}
+.error[hidden] { display: none; }
+
+button:disabled { opacity: 0.6; cursor: default; }
+
 .empty, .summary { color: #888; font-size: 0.9rem; margin-top: 16px; }
 
 @media (max-width: 600px) {
