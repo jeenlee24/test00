@@ -14,8 +14,13 @@ except ImportError:
 
 # 할 일 데이터는 Supabase(test00 프로젝트)의 todos 테이블에 저장됩니다.
 # secret 키는 서버에만 있고 브라우저로는 절대 보내지 않습니다.
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "")
+def env(name):
+    # 복사/붙여넣기나 셸 파이프로 섞여 들어오는 BOM(﻿)·공백·줄바꿈 제거
+    return os.environ.get(name, "").replace("﻿", "").strip()
+
+
+SUPABASE_URL = env("SUPABASE_URL").rstrip("/")
+SUPABASE_SECRET_KEY = env("SUPABASE_SECRET_KEY")
 TABLE_URL = f"{SUPABASE_URL}/rest/v1/todos"
 MAX_TEXT_LENGTH = 200
 
