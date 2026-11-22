@@ -24,8 +24,18 @@ const dialogNewInput = $("dialog-new-input");
 const dialogNewButton = $("dialog-new-button");
 const dialogError = $("dialog-error");
 
+const scheduleDialog = $("schedule-dialog");
+const scheduleTodoText = $("schedule-todo-text");
+
+const filterBar = $("filter-bar");
+const filterName = $("filter-name");
+const filterClear = $("filter-clear");
+
 let todos = [];
 let categories = [];
+
+// 카테고리 필터: undefined = 전체, null = '카테고리 없음'만, 문자열 = 해당 카테고리 id만
+let categoryFilter = undefined;
 
 // ---------- 공통 ----------
 
@@ -57,16 +67,166 @@ function formatDate(iso) {
   return isNaN(d) ? "" : dateFormatter.format(d);
 }
 
+const scheduleFormatter = new Intl.DateTimeFormat("ko-KR", {
+  month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit",
+});
+
+function formatSchedule(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? "" : scheduleFormatter.format(d);
+}
+
 function categoryName(id) {
   return categories.find((c) => c.id === id)?.name ?? null;
 }
 
+// ---------- 달력형 날짜·시간 선택기 ----------
+// 같은 선택기를 '추가 팝업'과 '일정 수정 팝업'에서 함께 씁니다.
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const DEFAULT_TIME = "09:00";
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function sameDay(a, b) {
+  return Boolean(a && b) && a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function createSchedulePicker(container) {
+  let selected = null; // 선택한 날짜(그날 0시 Date) 또는 null
+  let view = new Date(); // 보고 있는 달(1일)
+  view.setDate(1);
+
+  const root = el("div", "schedule-picker");
+
+  const header = el("div", "cal-header");
+  const prev = el("button", "secondary cal-nav", "‹");
+  const title = el("span", "cal-title");
+  const next = el("button", "secondary cal-nav", "›");
+  const todayBtn = el("button", "secondary cal-today", "오늘");
+  for (const b of [prev, next, todayBtn]) b.type = "button";
+  prev.setAttribute("aria-label", "이전 달");
+  next.setAttribute("aria-label", "다음 달");
+  header.append(prev, title, next, todayBtn);
+
+  const grid = el("div", "cal-grid");
+
+  const footer = el("div", "schedule-row");
+  const summaryText = el("span", "schedule-summary");
+  const time = el("input", "schedule-time");
+  time.type = "time";
+  time.value = DEFAULT_TIME;
+  time.setAttribute("aria-label", "시간");
+  const clear = el("button", "secondary", "지우기");
+  clear.type = "button";
+  footer.append(summaryText, time, clear);
+
+  root.append(header, grid, footer);
+  container.append(root);
+
+  function render() {
+    title.textContent = `${view.getFullYear()}년 ${view.getMonth() + 1}월`;
+    grid.innerHTML = "";
+    WEEKDAYS.forEach((w, i) => {
+      grid.append(el("span", "cal-weekday" + (i === 0 ? " sun" : i === 6 ? " sat" : ""), w));
+    });
+
+    for (let i = 0; i < view.getDay(); i++) grid.append(el("span"));
+
+    const today = new Date();
+    const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(view.getFullYear(), view.getMonth(), day);
+      const btn = el("button", "cal-day", String(day));
+      btn.type = "button";
+      if (date.getDay() === 0) btn.classList.add("sun");
+      if (date.getDay() === 6) btn.classList.add("sat");
+      if (sameDay(date, today)) btn.classList.add("today");
+      if (sameDay(date, selected)) btn.classList.add("selected");
+      btn.setAttribute("aria-pressed", String(sameDay(date, selected)));
+      btn.addEventListener("click", () => { selected = date; render(); });
+      grid.append(btn);
+    }
+
+    time.disabled = !selected;
+    clear.disabled = !selected;
+    summaryText.textContent = selected
+      ? `${selected.getMonth() + 1}월 ${selected.getDate()}일 (${WEEKDAYS[selected.getDay()]})`
+      : "날짜를 선택하세요";
+    summaryText.classList.toggle("muted", !selected);
+  }
+
+  prev.addEventListener("click", () => { view.setMonth(view.getMonth() - 1); render(); });
+  next.addEventListener("click", () => { view.setMonth(view.getMonth() + 1); render(); });
+  todayBtn.addEventListener("click", () => { view = new Date(); view.setDate(1); render(); });
+  clear.addEventListener("click", () => { selected = null; render(); });
+
+  return {
+    // ISO 문자열 또는 null 로 초기화
+    set(iso) {
+      const d = iso ? new Date(iso) : null;
+      if (d && !isNaN(d)) {
+        selected = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        time.value = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        view = new Date(selected);
+      } else {
+        selected = null;
+        time.value = DEFAULT_TIME;
+        view = new Date();
+      }
+      view.setDate(1);
+      render();
+    },
+    // 선택값을 ISO 문자열(UTC)로, 날짜를 고르지 않았으면 null
+    get() {
+      if (!selected) return null;
+      const [h, m] = (time.value || DEFAULT_TIME).split(":").map(Number);
+      const d = new Date(selected);
+      d.setHours(h, m, 0, 0);
+      return d.toISOString();
+    },
+  };
+}
+
+const addSchedule = createSchedulePicker($("add-schedule-picker"));
+const editSchedule = createSchedulePicker($("edit-schedule-picker"));
+
 // ---------- 화면 그리기 ----------
+
+function matchesFilter(todo) {
+  if (categoryFilter === undefined) return true;
+  return (todo.category_id ?? null) === categoryFilter;
+}
+
+function setCategoryFilter(categoryId) {
+  categoryFilter = categoryId;
+  renderTodos();
+}
+
+function renderFilterBar() {
+  filterBar.hidden = categoryFilter === undefined;
+  if (categoryFilter !== undefined) {
+    filterName.textContent = categoryFilter === null ? "'카테고리 없음'" : `'${categoryName(categoryFilter)}'`;
+  }
+}
 
 function renderTodos() {
   todoList.innerHTML = "";
 
-  for (const todo of todos) {
+  // 보고 있던 카테고리가 삭제되었으면 필터 해제
+  if (categoryFilter && !categoryName(categoryFilter)) categoryFilter = undefined;
+  renderFilterBar();
+
+  const visible = todos.filter(matchesFilter);
+  const now = Date.now();
+
+  for (const todo of visible) {
     const li = document.createElement("li");
     li.className = "todo-item" + (todo.done ? " done" : "");
 
@@ -86,16 +246,37 @@ function renderTodos() {
     const meta = document.createElement("div");
     meta.className = "todo-meta";
 
-    const badge = document.createElement("span");
+    // 카테고리 배지: 클릭하면 이 카테고리의 할 일만 보기
+    const badge = document.createElement("button");
+    badge.type = "button";
     const name = categoryName(todo.category_id);
     badge.className = "badge" + (name ? "" : " none");
     badge.textContent = name ?? "카테고리 없음";
+    badge.title = "이 카테고리만 보기";
+    badge.addEventListener("click", () => setCategoryFilter(todo.category_id ?? null));
+
+    // 일정(날짜·시간): 클릭하면 수정/삭제 팝업
+    const schedule = document.createElement("button");
+    schedule.type = "button";
+    schedule.className = "schedule";
+    if (todo.due_at) {
+      const overdue = !todo.done && new Date(todo.due_at).getTime() < now;
+      schedule.classList.toggle("overdue", overdue);
+      schedule.textContent = "📅 " + formatSchedule(todo.due_at);
+      schedule.title = overdue ? "일정이 지났습니다 · 클릭해서 수정" : "클릭해서 일정 수정";
+    } else {
+      schedule.classList.add("unset");
+      schedule.textContent = "+ 일정";
+      schedule.title = "일정 추가";
+    }
+    schedule.addEventListener("click", () => editTodoSchedule(todo));
 
     const date = document.createElement("time");
+    date.className = "created";
     date.dateTime = todo.created_at;
-    date.textContent = formatDate(todo.created_at);
+    date.textContent = "추가 " + formatDate(todo.created_at);
 
-    meta.append(badge, date);
+    meta.append(badge, schedule, date);
     body.append(text, meta);
 
     const del = document.createElement("button");
@@ -107,10 +288,13 @@ function renderTodos() {
     todoList.append(li);
   }
 
-  const doneCount = todos.filter((t) => t.done).length;
-  emptyMessage.hidden = todos.length > 0;
-  summary.hidden = todos.length === 0;
-  summary.textContent = `전체 ${todos.length}개 · 완료 ${doneCount}개`;
+  const doneCount = visible.filter((t) => t.done).length;
+  emptyMessage.hidden = visible.length > 0;
+  emptyMessage.textContent = categoryFilter === undefined
+    ? "할 일이 없습니다. 위에서 추가해 보세요."
+    : "이 카테고리의 할 일이 없습니다.";
+  summary.hidden = visible.length === 0;
+  summary.textContent = `${categoryFilter === undefined ? "전체" : "표시"} ${visible.length}개 · 완료 ${doneCount}개`;
 }
 
 function renderCategories() {
@@ -152,9 +336,9 @@ function renderAll() {
 
 // ---------- 할 일 CRUD ----------
 
-async function addTodo(text, categoryId) {
+async function addTodo(text, categoryId, dueAt) {
   try {
-    const created = await api("POST", TODO_API, { text, category_id: categoryId });
+    const created = await api("POST", TODO_API, { text, category_id: categoryId, due_at: dueAt });
     todos.push(created);
     showError("");
     renderAll();
@@ -172,6 +356,32 @@ async function toggleTodo(todo) {
     showError("");
   } catch (e) {
     showError("완료 표시를 저장하지 못했습니다: " + e.message);
+  }
+  renderTodos();
+}
+
+// 결과: ISO 문자열 / null(일정 없음) / undefined(취소)
+function askSchedule(todo) {
+  return new Promise((resolve) => {
+    scheduleTodoText.textContent = todo.text;
+    editSchedule.set(todo.due_at);
+    scheduleDialog.returnValue = "";
+    scheduleDialog.addEventListener("close", () => {
+      resolve(scheduleDialog.returnValue === "ok" ? editSchedule.get() : undefined);
+    }, { once: true });
+    scheduleDialog.showModal();
+  });
+}
+
+async function editTodoSchedule(todo) {
+  const dueAt = await askSchedule(todo);
+  if (dueAt === undefined || dueAt === (todo.due_at ? new Date(todo.due_at).toISOString() : null)) return;
+  try {
+    const updated = await api("PATCH", `${TODO_API}/${todo.id}`, { due_at: dueAt });
+    Object.assign(todo, updated);
+    showError("");
+  } catch (e) {
+    showError("일정을 저장하지 못했습니다: " + e.message);
   }
   renderTodos();
 }
@@ -252,18 +462,21 @@ function renderDialogChoices(selectedId) {
   }
 }
 
-// 결과: 카테고리 id(문자열) / null(카테고리 없음) / undefined(취소)
+// 결과: { categoryId, dueAt } / undefined(취소)
+//   categoryId: 카테고리 id 또는 null(카테고리 없음), dueAt: ISO 문자열 또는 null(일정 없음)
 function askCategory(todoText) {
   return new Promise((resolve) => {
     dialogTodoText.textContent = todoText;
     dialogNewInput.value = "";
     showError("", dialogError);
-    renderDialogChoices(null);
+    // 특정 카테고리만 보는 중이면 그 카테고리를 미리 선택
+    renderDialogChoices(categoryFilter ?? null);
+    addSchedule.set(null);
     dialog.returnValue = "";
     dialog.addEventListener("close", () => {
       if (dialog.returnValue !== "ok") return resolve(undefined);
       const checked = dialogChoices.querySelector('input[name="category"]:checked');
-      resolve(checked && checked.value ? checked.value : null);
+      resolve({ categoryId: checked && checked.value ? checked.value : null, dueAt: addSchedule.get() });
     }, { once: true });
     dialog.showModal();
   });
@@ -299,18 +512,20 @@ todoForm.addEventListener("submit", async (e) => {
   const text = todoInput.value.trim();
   if (!text) return;
 
-  const categoryId = await askCategory(text);
-  if (categoryId === undefined) { // 팝업에서 취소
+  const choice = await askCategory(text);
+  if (choice === undefined) { // 팝업에서 취소
     todoInput.focus();
     return;
   }
 
   const button = todoForm.querySelector("button");
   button.disabled = true;
-  if (await addTodo(text, categoryId)) todoInput.value = "";
+  if (await addTodo(text, choice.categoryId, choice.dueAt)) todoInput.value = "";
   button.disabled = false;
   todoInput.focus();
 });
+
+filterClear.addEventListener("click", () => setCategoryFilter(undefined));
 
 categoryForm.addEventListener("submit", async (e) => {
   e.preventDefault();

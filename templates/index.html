@@ -17,6 +17,12 @@
 
     <p id="error" class="error" role="alert" hidden></p>
 
+    <!-- 행의 카테고리를 클릭하면 나타나는 필터 표시줄 -->
+    <div id="filter-bar" class="filter-bar" hidden>
+      <span><strong id="filter-name"></strong> 카테고리만 보는 중</span>
+      <button id="filter-clear" type="button" class="secondary">전체 보기</button>
+    </div>
+
     <ul id="todo-list" class="todo-list"></ul>
 
     <p id="empty-message" class="empty">할 일이 없습니다. 위에서 추가해 보세요.</p>
@@ -47,9 +53,25 @@
       </div>
       <p id="dialog-error" class="error" role="alert" hidden></p>
 
+      <h3 class="dialog-subtitle">날짜 및 시간 <small>(선택)</small></h3>
+      <div id="add-schedule-picker"></div>
+
       <!-- Enter 키가 '추가'로 동작하도록 '추가'를 먼저 두고, CSS로 순서를 뒤집어 보여줍니다 -->
       <div class="dialog-actions">
         <button value="ok">추가</button>
+        <button value="cancel" class="secondary">취소</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 기존 할 일의 일정(날짜·시간)을 수정/삭제하는 팝업 -->
+  <dialog id="schedule-dialog" class="dialog">
+    <form method="dialog">
+      <h2>일정 수정</h2>
+      <p class="dialog-todo">"<span id="schedule-todo-text"></span>"</p>
+      <div id="edit-schedule-picker"></div>
+      <div class="dialog-actions">
+        <button value="ok">저장</button>
         <button value="cancel" class="secondary">취소</button>
       </div>
     </form>

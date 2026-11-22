@@ -76,14 +76,43 @@ button.danger:hover { background: #c53035; }
   color: #888;
 }
 
-.badge {
+/* 행 안의 작은 버튼(카테고리 배지 · 일정) — 전역 button 스타일 덮어쓰기 */
+.todo-item .badge, .todo-item .schedule {
   padding: 2px 8px;
   border-radius: 999px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.todo-item .badge { background: #e8efff; color: #2c56d1; font-weight: 600; }
+.todo-item .badge:hover { background: #d3e0ff; }
+.todo-item .badge.none { background: #f0f0f0; color: #888; font-weight: normal; }
+.todo-item .badge.none:hover { background: #e2e2e2; }
+
+.todo-item .schedule { background: #fff4e0; color: #9a5b00; font-weight: 600; }
+.todo-item .schedule:hover { background: #ffe8bf; }
+.todo-item .schedule.overdue { background: #fdecec; color: #b42318; }
+.todo-item .schedule.unset { background: transparent; color: #aaa; font-weight: normal; border: 1px dashed #ccc; }
+.todo-item .schedule.unset:hover { color: #666; border-color: #999; }
+.todo-item.done .schedule:not(.unset) { background: #f0f0f0; color: #999; }
+
+.created { color: #aaa; }
+
+/* 카테고리 필터 표시줄 */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
   background: #e8efff;
   color: #2c56d1;
-  font-weight: 600;
+  font-size: 0.9rem;
 }
-.badge.none { background: #f0f0f0; color: #888; font-weight: normal; }
+.filter-bar[hidden] { display: none; }
+.filter-bar button { padding: 6px 12px; }
 
 /* 카테고리 관리 */
 .category-section {
@@ -150,6 +179,66 @@ button.danger:hover { background: #c53035; }
 
 .dialog-new { margin-top: 12px; }
 .dialog-new input { padding: 8px 10px; font-size: 0.95rem; }
+
+.dialog { max-height: calc(100vh - 32px); overflow-y: auto; }
+
+.dialog-subtitle { margin: 20px 0 8px; font-size: 1rem; }
+.dialog-subtitle small { color: #888; font-weight: normal; }
+
+/* 달력형 날짜·시간 선택기 */
+.schedule-picker {
+  border: 1px solid #e3e5ea;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.cal-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.cal-title { flex: 1; text-align: center; font-weight: 600; }
+.cal-header button { padding: 4px 10px; }
+.cal-nav { font-size: 1.1rem; line-height: 1; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.cal-weekday { font-size: 0.75rem; color: #888; padding: 4px 0; }
+
+.cal-grid .cal-day {
+  padding: 0;
+  aspect-ratio: 1;
+  max-height: 40px;
+  width: 100%;
+  border-radius: 8px;
+  background: transparent;
+  color: #222;
+  font-size: 0.9rem;
+}
+.cal-grid .cal-day:hover { background: #eef0f4; }
+.sun { color: #e5484d !important; }
+.sat { color: #3b6cf6 !important; }
+.cal-grid .cal-day.today { box-shadow: inset 0 0 0 1px #3b6cf6; font-weight: 600; }
+.cal-grid .cal-day.selected { background: #3b6cf6; color: #fff !important; font-weight: 600; }
+
+.schedule-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+.schedule-summary { flex: 1; font-weight: 600; font-size: 0.9rem; }
+.schedule-summary.muted { color: #999; font-weight: normal; }
+.schedule-time {
+  padding: 6px 8px;
+  font-size: 0.95rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+.schedule-row button { padding: 6px 12px; }
 
 .dialog-actions {
   display: flex;

@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import datetime
 
 import requests
 from flask import Flask, jsonify, render_template, request
@@ -25,7 +26,7 @@ SUPABASE_SECRET_KEY = env("SUPABASE_SECRET_KEY")
 MAX_TODO_LENGTH = 200
 MAX_CATEGORY_LENGTH = 30
 
-TODO_FIELDS = "id,text,done,created_at,category_id"
+TODO_FIELDS = "id,text,done,created_at,category_id,due_at"
 CATEGORY_FIELDS = "id,name,created_at"
 
 app = Flask(__name__)
@@ -80,6 +81,22 @@ def valid_id(value):
         return None
 
 
+def parse_due_at(value):
+    """일정(due_at) 검증: None이면 일정 없음, 시간대가 포함된 ISO 8601 문자열이면 그대로 저장.
+    잘못된 값이면 False를 돌려줍니다."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if parsed.tzinfo is None:  # 시간대 없는 값은 해석이 모호하므로 거부
+        return False
+    return parsed.isoformat()
+
+
 def bad_request(message="잘못된 요청입니다."):
     return jsonify(error=message), 400
 
@@ -109,7 +126,11 @@ def add_todo():
         if not category_id:
             return bad_request("잘못된 카테고리입니다.")
 
-    row = {"text": text, "done": bool(body.get("done", False)), "category_id": category_id}
+    due_at = parse_due_at(body.get("due_at"))
+    if due_at is False:
+        return bad_request("잘못된 날짜/시간입니다.")
+
+    row = {"text": text, "done": bool(body.get("done", False)), "category_id": category_id, "due_at": due_at}
     rows = supabase("POST", "todos", params={"select": TODO_FIELDS}, json=row)
     return jsonify(rows[0]), 201
 
@@ -118,10 +139,25 @@ def add_todo():
 def update_todo(todo_id):
     todo_id = valid_id(todo_id)
     body = request.get_json(silent=True) or {}
-    if not todo_id or not isinstance(body.get("done"), bool):
+    if not todo_id:
         return bad_request()
+
+    # 보낸 필드만 수정: done(완료 여부), due_at(일정 — null이면 일정 삭제)
+    changes = {}
+    if "done" in body:
+        if not isinstance(body["done"], bool):
+            return bad_request()
+        changes["done"] = body["done"]
+    if "due_at" in body:
+        due_at = parse_due_at(body["due_at"])
+        if due_at is False:
+            return bad_request("잘못된 날짜/시간입니다.")
+        changes["due_at"] = due_at
+    if not changes:
+        return bad_request()
+
     rows = supabase("PATCH", "todos", params={"id": f"eq.{todo_id}", "select": TODO_FIELDS},
-                    json={"done": body["done"]})
+                    json=changes)
     if not rows:
         return jsonify(error="할 일을 찾을 수 없습니다."), 404
     return jsonify(rows[0])
