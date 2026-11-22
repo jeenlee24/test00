@@ -10,7 +10,7 @@
   <main class="container">
     <h1>할 일 목록</h1>
 
-    <form id="todo-form" class="todo-form">
+    <form id="todo-form" class="row-form">
       <input id="todo-input" type="text" placeholder="할 일을 입력하세요" autocomplete="off" maxlength="200" required>
       <button type="submit">추가</button>
     </form>
@@ -21,7 +21,39 @@
 
     <p id="empty-message" class="empty">할 일이 없습니다. 위에서 추가해 보세요.</p>
     <p id="summary" class="summary"></p>
+
+    <section class="category-section">
+      <h2>카테고리 관리</h2>
+      <form id="category-form" class="row-form">
+        <input id="category-input" type="text" placeholder="새 카테고리 이름" autocomplete="off" maxlength="30" required>
+        <button type="submit">추가</button>
+      </form>
+      <ul id="category-list" class="category-list"></ul>
+      <p id="category-empty" class="empty">카테고리가 없습니다.</p>
+    </section>
   </main>
+
+  <!-- 할 일 추가 시 카테고리를 묻는 팝업 -->
+  <dialog id="category-dialog" class="dialog">
+    <form method="dialog">
+      <h2>카테고리 선택</h2>
+      <p class="dialog-todo">"<span id="dialog-todo-text"></span>"</p>
+
+      <div id="dialog-choices" class="choices"></div>
+
+      <div class="row-form dialog-new">
+        <input id="dialog-new-input" type="text" placeholder="새 카테고리 바로 만들기" autocomplete="off" maxlength="30">
+        <button id="dialog-new-button" type="button" class="secondary">만들기</button>
+      </div>
+      <p id="dialog-error" class="error" role="alert" hidden></p>
+
+      <!-- Enter 키가 '추가'로 동작하도록 '추가'를 먼저 두고, CSS로 순서를 뒤집어 보여줍니다 -->
+      <div class="dialog-actions">
+        <button value="ok">추가</button>
+        <button value="cancel" class="secondary">취소</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
